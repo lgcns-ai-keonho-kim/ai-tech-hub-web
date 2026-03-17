@@ -2,6 +2,10 @@
 # 설명: npm workspaces(ui, backend), Next.js, Vite, Vitest, SQLite 개발 산출물 기준의 공통 규칙이다.
 # 적용 범위: 프로젝트 루트와 하위 워크스페이스 전체에 공통 적용한다.
 
+# 개발용 CODEX 관련
+.agents/
+.interface-design
+
 # 의존성 디렉터리
 node_modules/
 **/node_modules/
