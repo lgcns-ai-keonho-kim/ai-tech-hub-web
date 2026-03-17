@@ -27,8 +27,20 @@
 
 ```bash
 NODE_TLS_REJECT_UNAUTHORIZED=0 npm install
+cp .env.sample .env
 npm run dev
 ```
+
+## 포트 설정
+
+루트 `.env`에서 프론트엔드와 백엔드 포트를 함께 관리합니다.
+
+```bash
+FRONTEND_PORT=5173
+BACKEND_PORT=3000
+```
+
+`ui`는 루트 `.env`를 읽어 Vite 개발 서버 포트와 `/api` 프록시 타깃을 맞추고, `backend`는 같은 루트 `.env`를 읽어 Next.js 실행 포트를 맞춥니다.
 
 ## 테스트 명령
 

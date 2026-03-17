@@ -67,9 +67,10 @@
 * **Frontend (`ui/`)**: React 18+, Vite, TypeScript
 * **Backend (`backend/`)**: Next.js (App Router 기반 API Provider), TypeScript
 * **UI / Styling**: Tailwind CSS v4, Shadcn UI, Lucide Icons
+* **HTTP Client**: Axios (`/api` baseURL, 공통 오류 정규화, 세션 헤더 주입)
 * **상태 관리**:
-* **클라이언트**: Zustand (전역 에이전트 선택, 유저 세션, 테마, 검색/필터 상태)
-* **서버 데이터**: TanStack Query v5 (API 패칭, 동기화, 캐싱)
+* **클라이언트**: Zustand (`entities/session` 중심 세션 저장소, 최소 selector 구독)
+* **서버 데이터**: TanStack Query v5 (API 패칭, 동기화, 캐싱, query key 도메인 소유)
 
 * **데이터베이스 (Mock)**: SQLite3 + Drizzle ORM
 * **테스트**: Vitest (단위/통합)
@@ -87,12 +88,12 @@ ai-agent-hub/
 │
 ├── ui/                     # Vite + React 기반 프론트엔드 (SPA)
 │   ├── src/
-│   │   ├── app/            # App 진입점 및 Provider, 전역 레이아웃 설정
-│   │   ├── pages/          # 라우트별 페이지 (/, /blueprints/:id, /lessons, /admin 등)
-│   │   ├── widgets/        # 복합 UI 컴포넌트 (GlobalHeader, Sidebar, AgentList)
-│   │   ├── shared/         # 공통 UI (Shadcn UI), 유틸 함수, 커스텀 훅
-│   │   ├── entities/       # 도메인별 타입 및 컴포넌트 (AgentCard 등)
-│   │   └── store/          # Zustand 스토어 (useHubStore, useAuthStore 등)
+│   │   ├── app/            # Router, Provider, axios 요청 컨텍스트, 전역 레이아웃
+│   │   ├── pages/          # 라우트 엔트리와 페이지 조립층
+│   │   ├── widgets/        # 페이지 수준 복합 UI (AppShell, Dashboard, Feed)
+│   │   ├── features/       # 사용자 행동 단위 기능 (auth, create, approve, comment 등)
+│   │   ├── entities/       # 도메인 타입/조회/UI (session, asset, project, board 등)
+│   │   └── shared/         # 공통 primitive, HTTP, 범용 유틸
 │   ├── vite.config.ts
 │   └── tailwind.css        # Tailwind v4 진입점 (@theme 설정 포함)
 │
@@ -107,6 +108,25 @@ ai-agent-hub/
 └── package-lock.json
 
 ```
+
+### 4.1 Frontend 레이어 규칙
+
+UI 프런트엔드는 FSD(Feature-Sliced Design) 기반으로 운영하며, 의존 방향은 `app > pages > widgets > features > entities > shared` 단방향만 허용합니다.
+
+* `shared`: 도메인 지식이 없는 primitive, axios 클라이언트, 공용 유틸만 둡니다.
+* `entities`: 도메인별 타입, 조회 훅, 표시 규칙을 소유합니다.
+* `features`: 사용자 액션과 mutation, 폼, 승인/거절 같은 행동 로직을 소유합니다.
+* `pages`: 라우트 엔트리이며 자체 비즈니스 로직을 최소화하고 widgets/features/entities를 조합합니다.
+* 레거시 호환성 레이어는 유지하지 않으며, 모든 구현과 테스트는 새 FSD 공개 엔트리만 사용합니다.
+
+### 4.2 번들 및 로딩 정책
+
+프런트엔드 번들 정책은 `vercel-react-best-practices`를 기준으로 관리합니다.
+
+* `lucide-react`는 런타임에서 barrel import를 사용하지 않고 아이콘별 직접 import를 우선합니다.
+* `mermaid`, `chart.js`, `react-chartjs-2`처럼 무거운 렌더링 의존성은 필요한 화면에서만 지연 로딩합니다.
+* 앱 셸은 제어 로직과 프레젠테이션을 분리해 widgets 레이어 내부에서 책임을 세분화합니다.
+* 새 공용 코드를 추가할 때는 실제 반복 책임이 확인된 경우에만 재사용 컴포넌트로 승격합니다.
 
 ## 5. 데이터베이스 스키마 (SQLite + Drizzle ORM)
 
@@ -141,7 +161,7 @@ ai-agent-hub/
 ### 6.2 인증 기능 (Auth - Mock)
 
 * **로그인 / 회원가입 모달**:
-* Top Nav에서 진입. Product-Ready 지향성에 맞춰 이메일/비밀번호 입력 폼을 제공하되, Mock 환경이므로 **'이름(Name)'**을 입력하면 `users` 테이블에 생성(또는 조회) 후 Zustand `useAuthStore`에 세션을 저장합니다.
+* Top Nav에서 진입. Product-Ready 지향성에 맞춰 이메일/비밀번호 입력 폼을 제공하되, Mock 환경이므로 **'이름(Name)'**을 입력하면 `users` 테이블에 생성(또는 조회) 후 `entities/session`의 Zustand 저장소에 세션을 저장합니다.
 * 모달 상단에는 브랜드 자산(`logo.png`)을 제한적으로 활용할 수 있으며, 입력 필드는 일반 사각형 폼보다 더 촉각적이고 집중감 있는 표면으로 보여야 합니다.
 
 ### 6.3 사용자 페이지 (Client Facing)

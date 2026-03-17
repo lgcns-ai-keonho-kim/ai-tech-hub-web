@@ -39,6 +39,7 @@ lerna-debug.log*
 .env.*
 !.env.example
 !.env.*.example
+!.env.sample
 *.local
 
 # SQLite 개발 데이터
