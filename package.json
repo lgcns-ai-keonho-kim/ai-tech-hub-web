@@ -1,0 +1,20 @@
+{
+  "name": "assettechhub",
+  "private": true,
+  "version": "1.0.0",
+  "description": "AI Agent Hub 모노레포",
+  "scripts": {
+    "dev": "concurrently -n backend,ui -c green,cyan \"npm run dev --workspace backend\" \"npm run dev --workspace ui\"",
+    "dev:ui": "npm run dev --workspace ui",
+    "dev:backend": "npm run dev --workspace backend",
+    "db:init": "npm run db:init --workspace backend",
+    "test": "npm run test --workspace ui && npm run test --workspace backend"
+  },
+  "workspaces": [
+    "ui",
+    "backend"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

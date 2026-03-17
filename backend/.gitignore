@@ -1,0 +1,24 @@
+# 목적: Backend 워크스페이스에서 추적하지 않을 로컬 산출물을 제외한다.
+# 설명: Next.js App Router, Vitest, TypeScript, 로컬 환경 파일 기준의 규칙이다.
+
+# 의존성 디렉터리
+node_modules/
+
+# 빌드 및 테스트 산출물
+.next/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# 로컬 환경 설정
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.local
+
+# 로그
+logs/
+*.log
+npm-debug.log*
