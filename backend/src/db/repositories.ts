@@ -6,12 +6,20 @@
  */
 import { rawDatabase } from "@/db";
 
-export type SessionUser = {
+export type SessionIdentity = {
   id: number;
   email: string;
   name: string;
   accountStatus: "pending" | "approved" | "rejected";
   globalRole: "user" | "admin";
+};
+
+export type AuthenticatedUser = SessionIdentity & {
+  managedProjectIds: number[];
+};
+
+export type SessionPayload = {
+  user: SessionIdentity;
   managedProjectIds: number[];
 };
 
@@ -67,19 +75,125 @@ type HomeDashboardCommentAggregateRow = {
   yesterdayComments: number;
 };
 
+type BoardPostDetailRow = {
+  id: number;
+  type: "notice" | "qna";
+  title: string;
+  content: string;
+  authorUserId: number;
+  authorName: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type AdminUserRow = {
+  id: number;
+  email: string;
+  name: string;
+  accountStatus: "pending" | "approved" | "rejected";
+  globalRole: "user" | "admin";
+  createdAt: string;
+};
+
+type AdminManagedProjectRow = {
+  name: string;
+};
+
+type AdminProjectMembershipRow = {
+  projectId: number;
+  projectName: string;
+  role: "user" | "manager";
+};
+
+type AssetCategoryRow = {
+  id: number;
+  kind: string;
+  name: string;
+  slug: string;
+  sortOrder: number;
+};
+
+type AssetCommentRow = {
+  id: number;
+  assetId: number;
+  userId: number;
+  userName: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type BoardPostListRow = {
+  id: number;
+  type: "notice" | "qna";
+  title: string;
+  contentPreview: string;
+  authorUserId: number;
+  authorName: string;
+  createdAt: string;
+  updatedAt: string;
+  commentCount: number;
+};
+
+type BoardCommentRow = {
+  id: number;
+  postId: number;
+  userId: number;
+  userName: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type NotificationRow = {
+  id: number;
+  type: "asset-approved" | "asset-rejected" | "asset-comment" | "qna-comment";
+  targetType: "asset" | "board";
+  targetId: number;
+  message: string;
+  createdAt: string;
+  readAt: string | null;
+};
+
+type CategoryCountRow = {
+  categoryId: number;
+  categoryName: string;
+  count: number;
+};
+
 const homeDashboardKinds = ["code", "knowledge", "troubleshooting", "lesson"] as const;
 
 function nowIso() {
   return new Date().toISOString();
 }
 
-function mapSessionUser(row: Record<string, unknown>) {
+export function createAuthenticatedUser(
+  user: SessionIdentity,
+  managedProjectIds: number[],
+): AuthenticatedUser {
+  return {
+    ...user,
+    managedProjectIds,
+  };
+}
+
+export function createSessionPayload(
+  user: SessionIdentity,
+  managedProjectIds: number[],
+): SessionPayload {
+  return {
+    user,
+    managedProjectIds,
+  };
+}
+
+function mapSessionIdentity(row: Record<string, unknown>): SessionIdentity {
   return {
     id: Number(row.id),
     email: String(row.email),
     name: String(row.name),
-    accountStatus: row.account_status as SessionUser["accountStatus"],
-    globalRole: row.global_role as SessionUser["globalRole"],
+    accountStatus: row.account_status as SessionIdentity["accountStatus"],
+    globalRole: row.global_role as SessionIdentity["globalRole"],
   };
 }
 
@@ -159,12 +273,23 @@ function assetSelectSql(currentUserId?: number) {
   `;
 }
 
-export async function getUserById(userId: number) {
+async function buildSessionPayloadByUserId(userId: number): Promise<SessionPayload | null> {
+  const user = await getUserById(userId);
+
+  if (!user) {
+    return null;
+  }
+
+  const managedProjectIds = await getManagedProjectIdsByUserId(userId);
+  return createSessionPayload(user, managedProjectIds);
+}
+
+export async function getUserById(userId: number): Promise<SessionIdentity | null> {
   const row = rawDatabase
     .prepare("SELECT id, email, name, account_status, global_role FROM users WHERE id = ? LIMIT 1")
     .get(userId) as Record<string, unknown> | undefined;
 
-  return row ? mapSessionUser(row) : null;
+  return row ? mapSessionIdentity(row) : null;
 }
 
 export async function getManagedProjectIdsByUserId(userId: number) {
@@ -175,7 +300,7 @@ export async function getManagedProjectIdsByUserId(userId: number) {
   return rows.map((row) => row.project_id);
 }
 
-export async function loginWithEmail(email: string, password: string) {
+export async function loginWithEmail(email: string, password: string): Promise<SessionPayload | null> {
   const row = rawDatabase
     .prepare("SELECT * FROM users WHERE email = ? LIMIT 1")
     .get(email.trim()) as Record<string, unknown> | undefined;
@@ -184,13 +309,9 @@ export async function loginWithEmail(email: string, password: string) {
     return null;
   }
 
-  const user = mapSessionUser(row);
+  const user = mapSessionIdentity(row);
   const managedProjectIds = await getManagedProjectIdsByUserId(user.id);
-
-  return {
-    user,
-    managedProjectIds,
-  };
+  return createSessionPayload(user, managedProjectIds);
 }
 
 export async function createPendingUser(input: { email: string; password: string; name: string }) {
@@ -213,15 +334,15 @@ export async function createPendingUser(input: { email: string; password: string
   return "created" as const;
 }
 
-export async function updateUserProfile(userId: number, input: { name: string; email: string }) {
+export async function updateUserProfile(
+  userId: number,
+  input: { name: string; email: string },
+): Promise<SessionPayload | null> {
   rawDatabase
     .prepare("UPDATE users SET name = ?, email = ?, updated_at = ? WHERE id = ?")
     .run(input.name.trim(), input.email.trim(), nowIso(), userId);
 
-  const user = await getUserById(userId);
-  const managedProjectIds = await getManagedProjectIdsByUserId(userId);
-
-  return user ? { user, managedProjectIds } : null;
+  return buildSessionPayloadByUserId(userId);
 }
 
 export async function updateUserPassword(userId: number, input: { currentPassword: string; nextPassword: string }) {
@@ -240,7 +361,7 @@ export async function updateUserPassword(userId: number, input: { currentPasswor
   return "updated" as const;
 }
 
-export function listAssetCategories(kind?: string) {
+export function listAssetCategories(kind?: string): AssetCategoryRow[] {
   const rows = kind
     ? rawDatabase
         .prepare("SELECT id, kind, name, slug, sort_order AS sortOrder FROM asset_categories WHERE kind = ? ORDER BY sort_order, id")
@@ -249,7 +370,7 @@ export function listAssetCategories(kind?: string) {
         .prepare("SELECT id, kind, name, slug, sort_order AS sortOrder FROM asset_categories ORDER BY kind, sort_order, id")
         .all();
 
-  return rows;
+  return rows as AssetCategoryRow[];
 }
 
 export async function hasAssetCategory(categoryId: number) {
@@ -434,7 +555,7 @@ export async function createAsset(currentUserId: number, input: {
   return getAssetById(assetId, currentUserId);
 }
 
-export function listAssetComments(assetId: number) {
+export function listAssetComments(assetId: number): AssetCommentRow[] {
   return rawDatabase
     .prepare(`
       SELECT c.id, c.asset_id AS assetId, c.user_id AS userId, u.name AS userName, c.content, c.created_at AS createdAt, c.updated_at AS updatedAt
@@ -443,10 +564,14 @@ export function listAssetComments(assetId: number) {
       WHERE c.asset_id = ?
       ORDER BY c.created_at ASC, c.id ASC
     `)
-    .all(assetId);
+    .all(assetId) as AssetCommentRow[];
 }
 
-export async function createAssetComment(currentUserId: number, assetId: number, content: string) {
+export async function createAssetComment(
+  currentUserId: number,
+  assetId: number,
+  content: string,
+): Promise<AssetCommentRow | undefined> {
   const now = nowIso();
   const result = rawDatabase
     .prepare("INSERT INTO asset_comments (asset_id, user_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
@@ -474,7 +599,7 @@ export async function createAssetComment(currentUserId: number, assetId: number,
       WHERE c.id = ?
       LIMIT 1
     `)
-    .get(commentId);
+    .get(commentId) as AssetCommentRow | undefined;
 }
 
 function ensurePreferenceRow(assetId: number, userId: number) {
@@ -790,7 +915,7 @@ export async function rejectAsset(assetId: number, managerUserId: number, reason
   }
 }
 
-export function listBoardPosts(type: "notice" | "qna") {
+export function listBoardPosts(type: "notice" | "qna"): BoardPostListRow[] {
   return rawDatabase
     .prepare(`
       SELECT
@@ -808,11 +933,11 @@ export function listBoardPosts(type: "notice" | "qna") {
       WHERE p.type = ?
       ORDER BY p.created_at DESC, p.id DESC
     `)
-    .all(type);
+    .all(type) as BoardPostListRow[];
 }
 
-export async function getBoardPostById(postId: number) {
-  return rawDatabase
+export async function getBoardPostById(postId: number): Promise<BoardPostDetailRow | null> {
+  const row = rawDatabase
     .prepare(`
       SELECT
         p.id,
@@ -828,10 +953,15 @@ export async function getBoardPostById(postId: number) {
       WHERE p.id = ?
       LIMIT 1
     `)
-    .get(postId);
+    .get(postId) as BoardPostDetailRow | undefined;
+
+  return row ?? null;
 }
 
-export async function createBoardPost(authorUserId: number, input: { type: "notice" | "qna"; title: string; content: string }) {
+export async function createBoardPost(
+  authorUserId: number,
+  input: { type: "notice" | "qna"; title: string; content: string },
+): Promise<BoardPostDetailRow | null> {
   const now = nowIso();
   const result = rawDatabase
     .prepare("INSERT INTO board_posts (type, author_user_id, title, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
@@ -839,7 +969,7 @@ export async function createBoardPost(authorUserId: number, input: { type: "noti
   return getBoardPostById(Number(result.lastInsertRowid));
 }
 
-export function listBoardComments(postId: number) {
+export function listBoardComments(postId: number): BoardCommentRow[] {
   return rawDatabase
     .prepare(`
       SELECT c.id, c.post_id AS postId, c.user_id AS userId, u.name AS userName, c.content, c.created_at AS createdAt, c.updated_at AS updatedAt
@@ -848,10 +978,14 @@ export function listBoardComments(postId: number) {
       WHERE c.post_id = ?
       ORDER BY c.created_at ASC, c.id ASC
     `)
-    .all(postId);
+    .all(postId) as BoardCommentRow[];
 }
 
-export async function createBoardComment(postId: number, userId: number, content: string) {
+export async function createBoardComment(
+  postId: number,
+  userId: number,
+  content: string,
+): Promise<BoardCommentRow | undefined> {
   const now = nowIso();
   const result = rawDatabase
     .prepare("INSERT INTO board_comments (post_id, user_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
@@ -878,10 +1012,10 @@ export async function createBoardComment(postId: number, userId: number, content
       WHERE c.id = ?
       LIMIT 1
     `)
-    .get(Number(result.lastInsertRowid));
+    .get(Number(result.lastInsertRowid)) as BoardCommentRow | undefined;
 }
 
-export function listNotifications(userId: number) {
+export function listNotifications(userId: number): NotificationRow[] {
   return rawDatabase
     .prepare(`
       SELECT id, type, target_type AS targetType, target_id AS targetId, message, created_at AS createdAt, read_at AS readAt
@@ -889,7 +1023,7 @@ export function listNotifications(userId: number) {
       WHERE user_id = ?
       ORDER BY created_at DESC, id DESC
     `)
-    .all(userId);
+    .all(userId) as NotificationRow[];
 }
 
 export async function markNotificationRead(notificationId: number, userId: number) {
@@ -910,7 +1044,7 @@ export function createNotification(input: {
     .run(input.userId, input.type, input.targetType, input.targetId, input.message, nowIso());
 }
 
-export function getHomeDashboard(user: Pick<SessionUser, "globalRole">) {
+export function getHomeDashboard(user: Pick<SessionIdentity, "globalRole">) {
   const canSeePendingAssets = user.globalRole === "admin";
   const assetRows = rawDatabase
     .prepare(`
@@ -989,7 +1123,7 @@ export function getAdminDashboard() {
       GROUP BY c.id, c.name
       ORDER BY count DESC, c.id DESC
     `)
-    .all();
+    .all() as CategoryCountRow[];
 
   return {
     totalUsers,
@@ -1017,26 +1151,20 @@ export function listUsersForAdmin() {
       FROM users
       ORDER BY created_at DESC, id DESC
     `)
-    .all() as Array<{
-      id: number;
-      email: string;
-      name: string;
-      accountStatus: "pending" | "approved" | "rejected";
-      globalRole: "user" | "admin";
-      createdAt: string;
-    }>;
+    .all() as AdminUserRow[];
 
   return rows.map((user) => ({
     ...user,
-    managedProjects: rawDatabase
-      .prepare(`
-        SELECT p.name
-        FROM project_memberships pm
-        INNER JOIN projects p ON p.id = pm.project_id
-        WHERE pm.user_id = ? AND pm.role = 'manager'
-      `)
-      .all(user.id)
-      .map((item: { name: string }) => item.name),
+    managedProjects: (
+      rawDatabase
+        .prepare(`
+          SELECT p.name
+          FROM project_memberships pm
+          INNER JOIN projects p ON p.id = pm.project_id
+          WHERE pm.user_id = ? AND pm.role = 'manager'
+        `)
+        .all(user.id) as AdminManagedProjectRow[]
+    ).map((item) => item.name),
     projectMemberships: rawDatabase
       .prepare(`
         SELECT pm.project_id AS projectId, p.name AS projectName, pm.role AS role
@@ -1045,7 +1173,7 @@ export function listUsersForAdmin() {
         WHERE pm.user_id = ?
         ORDER BY p.name ASC, pm.id ASC
       `)
-      .all(user.id),
+      .all(user.id) as AdminProjectMembershipRow[],
   }));
 }
 
@@ -1110,7 +1238,7 @@ export function getProjectDeletePreview(projectId: number) {
       GROUP BY c.id, c.name
       ORDER BY count DESC, c.name ASC
     `)
-    .all(projectId);
+    .all(projectId) as CategoryCountRow[];
 
   return {
     projectId: project.id,
@@ -1158,13 +1286,16 @@ export async function createCategory(input: { kind: string; name: string; slug: 
   return listAssetCategories(input.kind).find((item) => item.slug === input.slug) ?? null;
 }
 
-export async function updateCategoryById(categoryId: number, input: { kind: string; name: string; slug: string; sortOrder: number }) {
+export async function updateCategoryById(
+  categoryId: number,
+  input: { kind: string; name: string; slug: string; sortOrder: number },
+): Promise<AssetCategoryRow | undefined> {
   rawDatabase
     .prepare("UPDATE asset_categories SET kind = ?, name = ?, slug = ?, sort_order = ? WHERE id = ?")
     .run(input.kind, input.name.trim(), input.slug.trim(), input.sortOrder, categoryId);
   return rawDatabase
     .prepare("SELECT id, kind, name, slug, sort_order AS sortOrder FROM asset_categories WHERE id = ? LIMIT 1")
-    .get(categoryId);
+    .get(categoryId) as AssetCategoryRow | undefined;
 }
 
 export function getCategoryDeletePreview(categoryId: number) {

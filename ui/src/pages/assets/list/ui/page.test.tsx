@@ -4,15 +4,16 @@
  * 적용 패턴: 페이지 렌더링 테스트 패턴
  * 참조: ui/src/pages/asset-list-page.tsx, ui/src/shared/api/hooks.ts
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as assetQueries from "@/entities/asset/model/queries";
 import type { AssetSummary, PaginatedAssets } from "@/entities/asset/model/types";
 import * as projectQueries from "@/entities/project/model/queries";
 import { AssetListPage } from "@/pages/assets/list/ui/page";
+import { asQueryResult } from "@/test/react-query-mocks";
+import { renderWithAppProviders } from "@/test/render-app";
 
 vi.mock("@/entities/asset/model/queries", () => ({
   useAssetCategoriesQuery: vi.fn(),
@@ -40,7 +41,7 @@ function renderAssetListPage({
   kind?: "code" | "knowledge" | "troubleshooting" | "lesson";
   paginatedAssets?: PaginatedAssets;
 } = {}) {
-  mockedUseAssetCategoriesQuery.mockReturnValue({
+  mockedUseAssetCategoriesQuery.mockReturnValue(asQueryResult<ReturnType<typeof assetQueries.useAssetCategoriesQuery>>({
     data: [
       {
         id: 1,
@@ -51,8 +52,8 @@ function renderAssetListPage({
       },
     ],
     isLoading: false,
-  } as ReturnType<typeof assetQueries.useAssetCategoriesQuery>);
-  mockedUseProjectsQuery.mockReturnValue({
+  }));
+  mockedUseProjectsQuery.mockReturnValue(asQueryResult<ReturnType<typeof projectQueries.useProjectsQuery>>({
     data: [
       {
         id: 1,
@@ -75,8 +76,8 @@ function renderAssetListPage({
     ],
     isLoading: false,
     isFetching: false,
-  } as ReturnType<typeof projectQueries.useProjectsQuery>);
-  mockedUsePaginatedAssetsQuery.mockReturnValue({
+  }));
+  mockedUsePaginatedAssetsQuery.mockReturnValue(asQueryResult<ReturnType<typeof assetQueries.usePaginatedAssetsQuery>>({
     data: paginatedAssets ?? {
       assets: [],
       pagination: {
@@ -87,13 +88,11 @@ function renderAssetListPage({
       },
     },
     isLoading: false,
-  } as ReturnType<typeof assetQueries.usePaginatedAssetsQuery>);
+  }));
 
-  return render(
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <AssetListPage kind={kind} />
-    </MemoryRouter>,
-  );
+  return renderWithAppProviders(<AssetListPage kind={kind} />, {
+    initialEntries: [initialEntry],
+  });
 }
 
 function createAssetSummary(kind: "code" | "knowledge" | "troubleshooting" | "lesson"): AssetSummary {
@@ -154,11 +153,10 @@ describe("AssetListPage", () => {
 
     const projectInput = screen.getByPlaceholderText("프로젝트 검색");
     const queryInput = screen.getByPlaceholderText("제목, 요약, 작성자 기준 검색");
-    const projectWrapper = projectInput.closest("div.relative");
+    const projectWrapper = screen.getByTestId("project-selector-root");
 
-    expect(projectWrapper).not.toBeNull();
     expect(projectInput.compareDocumentPosition(queryInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(projectWrapper?.className).toContain("lg:flex-[4.5]");
+    expect(projectWrapper.className).toContain("lg:flex-[4.5]");
     expect(queryInput.className).toContain("lg:flex-[5.5]");
   });
 
@@ -169,7 +167,11 @@ describe("AssetListPage", () => {
       initialEntry: "/knowledge-assets?projectId=1",
     });
 
-    expect(screen.getByText("에이전트 허브")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("status", { name: "선택된 프로젝트 에이전트 허브" }),
+      ).toBeInTheDocument();
+    });
 
     await user.click(screen.getByRole("button", { name: "지우기" }));
 

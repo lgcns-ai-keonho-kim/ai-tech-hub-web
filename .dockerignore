@@ -1,0 +1,25 @@
+# 목적: Cloud Run용 Docker 빌드 컨텍스트에서 불필요한 로컬 산출물을 제외한다.
+# 설명: 의존성, 테스트 산출물, 로컬 SQLite 파일, git 메타데이터를 빌드 컨텍스트에서 제거해 이미지 빌드 속도와 보안을 개선한다.
+# 적용 범위: 프로젝트 루트 Docker 빌드 전체
+
+.git
+.gitignore
+.agents
+.interface-design
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+coverage
+**/coverage
+test-results
+playwright-report
+*.log
+.env
+.env.*
+!.env.sample
+data/mock.db
+data/mock.db-shm
+data/mock.db-wal

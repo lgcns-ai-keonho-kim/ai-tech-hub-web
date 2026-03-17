@@ -2,10 +2,7 @@
 
 import * as React from "react"
 import { Select as SelectPrimitive } from "radix-ui"
-import Check from "lucide-react/dist/esm/icons/check"
-import ChevronDown from "lucide-react/dist/esm/icons/chevron-down"
-import ChevronUp from "lucide-react/dist/esm/icons/chevron-up"
-import ChevronsUpDown from "lucide-react/dist/esm/icons/chevrons-up-down"
+import { Check, ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
 
 import { cn } from "@/shared/lib/cn"
 

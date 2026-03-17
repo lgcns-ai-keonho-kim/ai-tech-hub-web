@@ -12,10 +12,10 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   return withErrorBoundary(async () => {
-    const session = await requireSessionUser(request);
+    const currentUser = await requireSessionUser(request);
     const params = await context.params;
     const assetId = Number(params.id);
-    const asset = await getAssetById(assetId, session.id);
+    const asset = await getAssetById(assetId, currentUser.id);
 
     if (!asset) {
       throw new ApiError({
@@ -33,7 +33,7 @@ export async function POST(
       });
     }
 
-    await recordAssetDownload(assetId, session.id);
+    await recordAssetDownload(assetId, currentUser.id);
     return { ok: true };
   });
 }

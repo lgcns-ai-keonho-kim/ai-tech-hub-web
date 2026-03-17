@@ -7,7 +7,7 @@
     "dev": "node ./scripts/run-next-with-root-env.mjs dev",
     "build": "next build",
     "start": "node ./scripts/run-next-with-root-env.mjs start",
-    "db:init": "tsx src/db/scripts/init-db.ts",
+    "db:init": "node ./scripts/init-db.mjs",
     "test": "vitest run"
   },
   "dependencies": {

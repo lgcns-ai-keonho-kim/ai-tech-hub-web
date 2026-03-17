@@ -9,7 +9,7 @@ import { requireSessionUser, withErrorBoundary } from "@/lib/http";
 
 export async function GET(request: Request) {
   return withErrorBoundary(async () => {
-    const session = await requireSessionUser(request);
-    return { dashboard: getHomeDashboard(session) };
+    const currentUser = await requireSessionUser(request);
+    return { dashboard: getHomeDashboard(currentUser) };
   });
 }

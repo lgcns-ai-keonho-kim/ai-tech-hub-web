@@ -6,13 +6,21 @@
  */
 import { updateUserProfile } from "@/db/repositories";
 import { updateProfileBodySchema } from "@/lib/contracts";
-import { parseJsonBody, requireSessionUser, withErrorBoundary } from "@/lib/http";
+import { ApiError, parseJsonBody, requireSessionUser, withErrorBoundary } from "@/lib/http";
 
 export async function PATCH(request: Request) {
   return withErrorBoundary(async () => {
-    const session = await requireSessionUser(request);
+    const currentUser = await requireSessionUser(request);
     const body = await parseJsonBody(request, updateProfileBodySchema);
-    const nextSession = await updateUserProfile(session.id, body);
+    const nextSession = await updateUserProfile(currentUser.id, body);
+
+    if (!nextSession) {
+      throw new ApiError({
+        status: 500,
+        code: "session_refresh_failed",
+        message: "프로필 수정 후 세션 정보를 다시 불러오지 못했습니다.",
+      });
+    }
 
     return { session: nextSession };
   });

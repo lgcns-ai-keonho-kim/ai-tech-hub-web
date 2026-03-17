@@ -4,14 +4,13 @@
  * 적용 패턴: 공용 폼 화면 패턴
  * 참조: ui/src/shared/api/hooks.ts, ui/src/shared/constants/asset-domain.ts
  */
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { Badge } from "@/shared/ui/primitives/badge";
 import { Button } from "@/shared/ui/primitives/button";
 import {
   FieldDescription,
@@ -34,6 +33,7 @@ import type { AssetKind, CreateAssetInput } from "@/entities/asset/model/types";
 import { getAssetKindLabel } from "@/entities/asset/lib/labels";
 import { useCreateAssetMutation } from "@/features/asset-actions/model/mutations";
 import { ProjectSelector } from "@/features/project-selector/ui/project-selector";
+import type { ProjectSummary } from "@/entities/project/model/types";
 import { toSlug } from "@/shared/lib/slug";
 import { SectionHero } from "@/shared/ui/section-hero";
 
@@ -54,6 +54,7 @@ const assetSchema = z.object({
 });
 
 type AssetFormValues = z.infer<typeof assetSchema>;
+type AssetFormInput = z.input<typeof assetSchema>;
 
 export function AssetFormPage() {
   const navigate = useNavigate();
@@ -62,8 +63,9 @@ export function AssetFormPage() {
   const categoriesQuery = useAssetCategoriesQuery(kind);
   const createAssetMutation = useCreateAssetMutation();
   const [selectedAttachmentFile, setSelectedAttachmentFile] = useState<File | null>(null);
+  const [selectedProject, setSelectedProject] = useState<Pick<ProjectSummary, "id" | "name"> | null>(null);
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
-  const form = useForm<AssetFormValues>({
+  const form = useForm<AssetFormInput, undefined, AssetFormValues>({
     resolver: zodResolver(assetSchema),
     defaultValues: {
       title: "",
@@ -78,21 +80,22 @@ export function AssetFormPage() {
     },
   });
 
-  const watchedTitle = form.watch("title");
-  const selectedProjectId = form.watch("projectId");
-
-  useEffect(() => {
-    form.setValue("slug", toSlug(watchedTitle), { shouldValidate: true });
-  }, [form, watchedTitle]);
-
   const requiresProject = kind !== "code";
 
-  const handleProjectSelect = (projectId: number) => {
-    form.setValue("projectId", projectId, { shouldValidate: true });
+  const titleField = form.register("title", {
+    onChange: (event) => {
+      form.setValue("slug", toSlug(event.target.value), { shouldValidate: true });
+    },
+  });
+
+  const handleProjectSelect = (project: Pick<ProjectSummary, "id" | "name">) => {
+    setSelectedProject(project);
+    form.setValue("projectId", project.id, { shouldValidate: true });
     form.clearErrors("projectId");
   };
 
   const handleProjectClear = () => {
+    setSelectedProject(null);
     form.setValue("projectId", null, { shouldValidate: true });
   };
 
@@ -150,7 +153,7 @@ export function AssetFormPage() {
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="asset-title">제목</FieldLabel>
-                <Input id="asset-title" {...form.register("title")} className="h-9 rounded-md border-border bg-background" />
+                <Input id="asset-title" {...titleField} className="h-9 rounded-md border-border bg-background" />
                 <FieldError>{form.formState.errors.title?.message}</FieldError>
               </Field>
               <Field>
@@ -194,10 +197,12 @@ export function AssetFormPage() {
                   <FieldLabel htmlFor="project-query">프로젝트 검색</FieldLabel>
                   <ProjectSelector
                     kind={kind}
-                    selectedProjectId={selectedProjectId}
-                    selectedLabel={selectedProjectId ? `프로젝트 #${selectedProjectId}` : null}
+                    selectedProject={selectedProject}
                     optionMeta={(project) => `${project.assetCounts[kind] ?? 0}건`}
-                    onProjectSelect={(project) => handleProjectSelect(project.id)}
+                    onProjectSelect={(project) => handleProjectSelect({
+                      id: project.id,
+                      name: project.name,
+                    })}
                     onProjectClear={handleProjectClear}
                   />
                   <FieldError>{form.formState.errors.projectId?.message}</FieldError>

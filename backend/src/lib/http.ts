@@ -8,9 +8,10 @@ import { NextResponse } from "next/server";
 import { ZodError, type ZodSchema } from "zod";
 
 import {
+  createAuthenticatedUser,
   getManagedProjectIdsByUserId,
   getUserById,
-  type SessionUser,
+  type AuthenticatedUser,
 } from "@/db/repositories";
 
 type ApiErrorShape = {
@@ -96,7 +97,7 @@ export async function withErrorBoundary<T>(handler: () => Promise<T> | T) {
   }
 }
 
-export async function requireSessionUser(request: Request) {
+export async function requireSessionUser(request: Request): Promise<AuthenticatedUser> {
   const userId = Number(request.headers.get("x-user-id"));
 
   if (!Number.isInteger(userId) || userId <= 0) {
@@ -107,9 +108,10 @@ export async function requireSessionUser(request: Request) {
     });
   }
 
-  const user = await getUserById(userId);
+  // 내부 인증 객체는 flat 구조를 유지하고, 응답용 세션 payload와 구분한다.
+  const sessionIdentity = await getUserById(userId);
 
-  if (!user) {
+  if (!sessionIdentity) {
     throw new ApiError({
       status: 401,
       code: "session_user_not_found",
@@ -117,7 +119,7 @@ export async function requireSessionUser(request: Request) {
     });
   }
 
-  if (user.accountStatus !== "approved") {
+  if (sessionIdentity.accountStatus !== "approved") {
     throw new ApiError({
       status: 403,
       code: "account_not_approved",
@@ -125,12 +127,8 @@ export async function requireSessionUser(request: Request) {
     });
   }
 
-  const managedProjectIds = await getManagedProjectIdsByUserId(user.id);
-
-  return {
-    ...user,
-    managedProjectIds,
-  } satisfies SessionUser;
+  const managedProjectIds = await getManagedProjectIdsByUserId(sessionIdentity.id);
+  return createAuthenticatedUser(sessionIdentity, managedProjectIds);
 }
 
 export function getOptionalSessionUserId(request: Request) {
@@ -138,10 +136,10 @@ export function getOptionalSessionUserId(request: Request) {
   return Number.isInteger(userId) && userId > 0 ? userId : undefined;
 }
 
-export async function requireAdminUser(request: Request) {
-  const user = await requireSessionUser(request);
+export async function requireAdminUser(request: Request): Promise<AuthenticatedUser> {
+  const currentUser = await requireSessionUser(request);
 
-  if (user.globalRole !== "admin") {
+  if (currentUser.globalRole !== "admin") {
     throw new ApiError({
       status: 403,
       code: "admin_required",
@@ -149,16 +147,16 @@ export async function requireAdminUser(request: Request) {
     });
   }
 
-  return user;
+  return currentUser;
 }
 
 export async function requireManagerForProject(
   request: Request,
   projectId: number,
-) {
-  const user = await requireSessionUser(request);
+): Promise<AuthenticatedUser> {
+  const currentUser = await requireSessionUser(request);
 
-  if (!user.managedProjectIds.includes(projectId)) {
+  if (!currentUser.managedProjectIds.includes(projectId)) {
     throw new ApiError({
       status: 403,
       code: "project_manager_required",
@@ -166,5 +164,5 @@ export async function requireManagerForProject(
     });
   }
 
-  return user;
+  return currentUser;
 }

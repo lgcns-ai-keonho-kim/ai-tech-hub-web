@@ -12,9 +12,9 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   return withErrorBoundary(async () => {
-    const session = await requireSessionUser(request);
+    const currentUser = await requireSessionUser(request);
     const params = await context.params;
-    await markNotificationRead(Number(params.id), session.id);
+    await markNotificationRead(Number(params.id), currentUser.id);
     return { read: true };
   });
 }

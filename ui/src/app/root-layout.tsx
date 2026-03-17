@@ -51,17 +51,9 @@ export function RootLayout() {
     };
 
     handleViewportChange();
-    if ("addEventListener" in mediaQueryList) {
-      mediaQueryList.addEventListener("change", handleViewportChange);
-    } else {
-      mediaQueryList.addListener(handleViewportChange);
-    }
+    mediaQueryList.addEventListener("change", handleViewportChange);
     return () => {
-      if ("removeEventListener" in mediaQueryList) {
-        mediaQueryList.removeEventListener("change", handleViewportChange);
-      } else {
-        mediaQueryList.removeListener(handleViewportChange);
-      }
+      mediaQueryList.removeEventListener("change", handleViewportChange);
     };
   }, []);
 

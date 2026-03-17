@@ -1,12 +1,11 @@
 /**
  * 목적: 프로젝트 단계 통계 차트와 보조 요약 카드를 공용 패널로 제공한다.
- * 설명: 프로젝트 페이지와 홈 화면이 같은 차트 구성과 단계 집계를 재사용하며 차트 청크는 지연 로딩한다.
+ * 설명: 프로젝트 페이지와 홈 화면이 같은 단계 집계 모델을 재사용하고, 차트 청크는 지연 로딩한다.
  * 적용 패턴: 프레젠테이션 컴포넌트 패턴
  * 참조: ui/src/pages/projects-page.tsx, ui/src/pages/home-page.tsx, ui/src/widgets/project-stage-summary-panel-chart.tsx
  */
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 
-import type { ChartData, ChartOptions } from "chart.js";
 import { useTheme } from "next-themes";
 
 import {
@@ -19,17 +18,18 @@ import { cn } from "@/shared/lib/cn";
 import { projectStageLabels, projectStageOrder } from "@/entities/project/lib/stage";
 import type { ProjectStage, ProjectSummary } from "@/entities/project/model/types";
 import { AnimatedSlotNumber } from "@/shared/ui/animated-slot-number";
+import type {
+  ProjectStageChartItem,
+  ProjectStageChartModel,
+  ProjectStageChartTheme,
+} from "@/widgets/project-stage-summary-panel-chart-driver";
 
 const LazyProjectStageSummaryPanelChart = lazy(async () => {
   const module = await import("@/widgets/project-stage-summary-panel-chart");
   return { default: module.ProjectStageSummaryPanelChart };
 });
 
-type ProjectStageChartColors = {
-  axis: string;
-  grid: string;
-  line: string;
-  linePoint: string;
+type ProjectStageChartColors = ProjectStageChartTheme & {
   stagePalette: string[];
 };
 
@@ -123,106 +123,21 @@ export function ProjectStageSummaryPanel({
     () => `${resolvedTheme ?? "light"}-${chartColors.grid}-${chartColors.linePoint}`,
     [chartColors.grid, chartColors.linePoint, resolvedTheme],
   );
-  const stageChartData = useMemo<ChartData<"bar">>(
+  const stageChartModel = useMemo<ProjectStageChartModel>(
     () => ({
-      labels: projectStageOrder.map((stage) => projectStageLabels[stage]),
-      datasets: [
-        {
-          type: "bar" as const,
-          label: "단계별 파일 수",
-          data: projectStageOrder.map((stage) => stageSummary[stage]),
-          backgroundColor: chartColors.stagePalette,
-          hoverBackgroundColor: chartColors.stagePalette,
-          borderRadius: 6,
-          borderSkipped: false as const,
-          maxBarThickness: 36,
-          categoryPercentage: 0.72,
-          barPercentage: 0.88,
-          order: 2,
-          yAxisID: "y",
-        },
-        {
-          type: "line" as const,
-          label: "증감 흐름",
-          data: projectStageOrder.map((stage) => stageSummary[stage]),
-          borderColor: chartColors.line,
-          borderWidth: 2,
-          pointBackgroundColor: chartColors.linePoint,
-          pointBorderColor: chartColors.linePoint,
-          pointBorderWidth: 2,
-          pointHoverBackgroundColor: chartColors.linePoint,
-          pointHoverBorderColor: chartColors.linePoint,
-          pointHoverRadius: 4.5,
-          pointRadius: 4.5,
-          tension: 0.25,
-          order: 1,
-          yAxisID: "y",
-        },
-      ],
-    }),
-    [chartColors.line, chartColors.linePoint, chartColors.stagePalette, stageSummary],
-  );
-  const stageChartOptions = useMemo<ChartOptions<"bar">>(
-    () => ({
-      animation: {
-        duration: 150,
-        easing: "easeOutQuad",
-      },
-      maintainAspectRatio: false,
-      responsive: true,
-      plugins: {
-        legend: {
-          display: false,
-        },
-        tooltip: {
-          enabled: false,
-        },
-      },
-      scales: {
-        x: {
-          border: {
-            display: false,
-          },
-          grid: {
-            display: false,
-            drawTicks: false,
-          },
-          offset: true,
-          ticks: {
-            color: chartColors.axis,
-            font: {
-              family: "system-ui, sans-serif",
-              size: 14,
-              weight: 500,
-            },
-            maxRotation: 0,
-            minRotation: 0,
-            padding: 8,
-          },
-        },
-        y: {
-          beginAtZero: true,
-          border: {
-            display: false,
-          },
-          grid: {
-            color: chartColors.grid,
-            drawTicks: false,
-          },
-          ticks: {
-            color: chartColors.axis,
-            font: {
-              family: "system-ui, sans-serif",
-              size: 13,
-              weight: 500,
-            },
-            precision: 0,
-            stepSize: 1,
-          },
-        },
+      items: projectStageOrder.map<ProjectStageChartItem>((stage, index) => ({
+        label: projectStageLabels[stage],
+        count: stageSummary[stage],
+        color: chartColors.stagePalette[index],
+      })),
+      theme: {
+        axis: chartColors.axis,
+        grid: chartColors.grid,
+        line: chartColors.line,
+        linePoint: chartColors.linePoint,
       },
     }),
-    [chartColors],
+    [chartColors, stageSummary],
   );
 
   return (
@@ -245,8 +160,7 @@ export function ProjectStageSummaryPanel({
           <Suspense fallback={<div className="h-full w-full animate-pulse rounded-lg bg-muted/40" />}>
             <LazyProjectStageSummaryPanelChart
               chartThemeKey={chartThemeKey}
-              chartData={stageChartData}
-              chartOptions={stageChartOptions}
+              chartModel={stageChartModel}
               className="h-full w-full"
             />
           </Suspense>

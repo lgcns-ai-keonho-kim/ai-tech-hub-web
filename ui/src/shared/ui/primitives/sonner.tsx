@@ -4,11 +4,7 @@ import type { CSSProperties } from "react"
 
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
-import AlertCircle from "lucide-react/dist/esm/icons/alert-circle"
-import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2"
-import Info from "lucide-react/dist/esm/icons/info"
-import LoaderCircle from "lucide-react/dist/esm/icons/loader-circle"
-import XCircle from "lucide-react/dist/esm/icons/x-circle"
+import { AlertCircle, CheckCircle2, Info, LoaderCircle, XCircle } from "lucide-react"
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()

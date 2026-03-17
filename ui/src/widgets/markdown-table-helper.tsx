@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react";
 
-import Table2 from "lucide-react/dist/esm/icons/table-2";
+import { Table2 } from "lucide-react";
 
 import { Button } from "@/shared/ui/primitives/button";
 import { Input } from "@/shared/ui/primitives/input";

@@ -4,15 +4,17 @@
  * 적용 패턴: 정적 구성 패턴
  * 참조: ui/src/widgets/app-shell-header.tsx, ui/src/widgets/app-shell/ui/sidebar-frame.tsx
  */
-import type { LucideIcon } from "lucide-react";
-import Bell from "lucide-react/dist/esm/icons/bell";
-import BookOpen from "lucide-react/dist/esm/icons/book-open";
-import Code2 from "lucide-react/dist/esm/icons/code-2";
-import FolderKanban from "lucide-react/dist/esm/icons/folder-kanban";
-import House from "lucide-react/dist/esm/icons/house";
-import MessageSquareText from "lucide-react/dist/esm/icons/message-square-text";
-import NotebookPen from "lucide-react/dist/esm/icons/notebook-pen";
-import TriangleAlert from "lucide-react/dist/esm/icons/triangle-alert";
+import {
+  Bell,
+  BookOpen,
+  Code2,
+  FolderKanban,
+  House,
+  MessageSquareText,
+  NotebookPen,
+  TriangleAlert,
+  type LucideIcon,
+} from "lucide-react";
 
 import { assetKindOptions } from "@/entities/asset/lib/labels";
 

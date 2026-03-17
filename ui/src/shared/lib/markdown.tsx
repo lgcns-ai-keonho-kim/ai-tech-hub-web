@@ -18,14 +18,14 @@ import {
 } from "@/shared/ui/primitives/alert";
 import { cn } from "@/shared/lib/cn";
 
-type MermaidModule = typeof import("mermaid");
+type MermaidModule = typeof import("mermaid")["default"];
 
 let mermaidModulePromise: Promise<MermaidModule> | null = null;
 let mermaidInitialized = false;
 
 function loadMermaidModule() {
   if (!mermaidModulePromise) {
-    mermaidModulePromise = import("mermaid");
+    mermaidModulePromise = import("mermaid").then((module) => module.default);
   }
 
   return mermaidModulePromise;

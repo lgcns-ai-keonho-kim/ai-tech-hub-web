@@ -4,7 +4,7 @@
  * 적용 패턴: 페이지 모델 패턴
  * 참조: ui/src/pages/projects/list/ui/page.tsx, ui/src/widgets/project-list/ui/project-list-card.tsx
  */
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useState } from "react";
 
 export function useProjectListState() {
   const [draftQuery, setDraftQuery] = useState("");

@@ -4,12 +4,14 @@
  * 적용 패턴: 페이지 렌더링 테스트 패턴
  * 참조: ui/src/pages/asset-detail-page.tsx, ui/src/shared/api/hooks.ts
  */
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as assetQueries from "@/entities/asset/model/queries";
 import * as assetMutations from "@/features/asset-actions/model/mutations";
 import { AssetDetailPage } from "@/pages/assets/detail/ui/page";
+import { asMutationResult, asQueryResult } from "@/test/react-query-mocks";
+import { renderWithAppProviders } from "@/test/render-app";
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
@@ -46,7 +48,7 @@ const mockedUseLikeAssetMutation = vi.mocked(assetMutations.useLikeAssetMutation
 beforeEach(() => {
   vi.clearAllMocks();
 
-  mockedUseAssetDetailQuery.mockReturnValue({
+  mockedUseAssetDetailQuery.mockReturnValue(asQueryResult<ReturnType<typeof assetQueries.useAssetDetailQuery>>({
     data: {
       id: 1,
       kind: "knowledge",
@@ -79,29 +81,29 @@ beforeEach(() => {
       downloadedByMe: false,
     },
     isLoading: false,
-  } as ReturnType<typeof assetQueries.useAssetDetailQuery>);
-  mockedUseAssetCommentsQuery.mockReturnValue({
+  }));
+  mockedUseAssetCommentsQuery.mockReturnValue(asQueryResult<ReturnType<typeof assetQueries.useAssetCommentsQuery>>({
     data: [],
     isLoading: false,
-  } as ReturnType<typeof assetQueries.useAssetCommentsQuery>);
-  mockedUseCreateAssetCommentMutation.mockReturnValue({
+  }));
+  mockedUseCreateAssetCommentMutation.mockReturnValue(asMutationResult<ReturnType<typeof assetMutations.useCreateAssetCommentMutation>>({
     mutateAsync: vi.fn(),
     isPending: false,
-  } as ReturnType<typeof assetMutations.useCreateAssetCommentMutation>);
-  mockedUseDownloadAssetMutation.mockReturnValue({
+  }));
+  mockedUseDownloadAssetMutation.mockReturnValue(asMutationResult<ReturnType<typeof assetMutations.useDownloadAssetMutation>>({
     mutate: vi.fn(),
-  } as ReturnType<typeof assetMutations.useDownloadAssetMutation>);
-  mockedUseFavoriteAssetMutation.mockReturnValue({
+  }));
+  mockedUseFavoriteAssetMutation.mockReturnValue(asMutationResult<ReturnType<typeof assetMutations.useFavoriteAssetMutation>>({
     mutate: vi.fn(),
-  } as ReturnType<typeof assetMutations.useFavoriteAssetMutation>);
-  mockedUseLikeAssetMutation.mockReturnValue({
+  }));
+  mockedUseLikeAssetMutation.mockReturnValue(asMutationResult<ReturnType<typeof assetMutations.useLikeAssetMutation>>({
     mutate: vi.fn(),
-  } as ReturnType<typeof assetMutations.useLikeAssetMutation>);
+  }));
 });
 
 describe("AssetDetailPage", () => {
   it("mock 첨부 메타를 보여주고 다운로드 버튼은 비활성화한다", () => {
-    render(<AssetDetailPage />);
+    renderWithAppProviders(<AssetDetailPage />);
 
     expect(screen.getByText(/첨부 requirements\\.pdf/)).toBeInTheDocument();
     expect(screen.getByText("mock 미리보기만 저장됨")).toBeInTheDocument();

@@ -10,9 +10,9 @@ import { ApiError, parseJsonBody, requireSessionUser, withErrorBoundary } from "
 
 export async function PATCH(request: Request) {
   return withErrorBoundary(async () => {
-    const session = await requireSessionUser(request);
+    const currentUser = await requireSessionUser(request);
     const body = await parseJsonBody(request, updatePasswordBodySchema);
-    const result = await updateUserPassword(session.id, body);
+    const result = await updateUserPassword(currentUser.id, body);
 
     if (result === "invalid_current_password") {
       throw new ApiError({

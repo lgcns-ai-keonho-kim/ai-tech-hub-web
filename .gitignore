@@ -5,6 +5,7 @@
 # 개발용 CODEX 관련
 .agents/
 .interface-design
+skills-lock.json
 
 # 의존성 디렉터리
 node_modules/

@@ -18,10 +18,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   return withErrorBoundary(async () => {
-    const session = await requireSessionUser(request);
+    const currentUser = await requireSessionUser(request);
     const body = await parseJsonBody(request, createBoardPostBodySchema);
 
-    if (body.type === "notice" && session.globalRole !== "admin") {
+    if (body.type === "notice" && currentUser.globalRole !== "admin") {
       throw new ApiError({
         status: 403,
         code: "notice_admin_required",
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const post = await createBoardPost(session.id, body);
+    const post = await createBoardPost(currentUser.id, body);
     return { post };
   });
 }

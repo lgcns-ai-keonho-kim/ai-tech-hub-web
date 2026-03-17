@@ -6,8 +6,7 @@
  */
 "use client";
 
-import Moon from "lucide-react/dist/esm/icons/moon";
-import Sun from "lucide-react/dist/esm/icons/sun";
+import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/shared/ui/primitives/button";

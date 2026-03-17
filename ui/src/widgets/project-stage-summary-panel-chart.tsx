@@ -1,47 +1,92 @@
 /**
- * 목적: 프로젝트 단계 차트 렌더링을 별도 청크로 분리한다.
- * 설명: chart.js와 react-chartjs-2 의존성을 실제 차트가 필요한 시점에만 로드해 번들 비용을 낮춘다.
- * 적용 패턴: 지연 로딩 패턴
- * 참조: ui/src/widgets/project-stage-summary-panel.tsx
+ * 목적: 프로젝트 단계 차트 canvas와 Chart.js 드라이버를 연결한다.
+ * 설명: 차트 설정과 등록 책임은 드라이버에 위임하고, 이 컴포넌트는 canvas 생명주기와 fallback 렌더링만 관리한다.
+ * 적용 패턴: imperative bridge 패턴
+ * 참조: ui/src/widgets/project-stage-summary-panel.tsx, ui/src/widgets/project-stage-summary-panel-chart-driver.ts
  */
-import {
-  BarElement,
-  CategoryScale,
-  Chart as ChartJS,
-  type ChartData,
-  type ChartOptions,
-  Legend,
-  LineElement,
-  LinearScale,
-  PointElement,
-  Tooltip,
-} from "chart.js";
-import { Chart } from "react-chartjs-2";
+import { useEffect, useRef, useState } from "react";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  Tooltip,
-  Legend,
-);
+import {
+  createProjectStageChart,
+  destroyProjectStageChart,
+  type ProjectStageChartInstance,
+  type ProjectStageChartModel,
+} from "@/widgets/project-stage-summary-panel-chart-driver";
+
+function hasRenderableCanvasContext(canvas: HTMLCanvasElement) {
+  try {
+    return Boolean(canvas.getContext("2d"));
+  } catch {
+    return false;
+  }
+}
 
 export function ProjectStageSummaryPanelChart({
-  chartData,
-  chartOptions,
+  chartModel,
   chartThemeKey,
   className,
 }: {
-  chartData: ChartData<"bar">;
-  chartOptions: ChartOptions<"bar">;
+  chartModel: ProjectStageChartModel;
   chartThemeKey: string;
   className?: string;
 }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const chartInstanceRef = useRef<ProjectStageChartInstance | null>(null);
+  const [shouldRenderFallback, setShouldRenderFallback] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    if (!hasRenderableCanvasContext(canvas)) {
+      setShouldRenderFallback(true);
+      return;
+    }
+
+    setShouldRenderFallback(false);
+    chartInstanceRef.current = createProjectStageChart(canvas, chartModel);
+
+    return () => {
+      destroyProjectStageChart(canvas, chartInstanceRef.current);
+      chartInstanceRef.current = null;
+    };
+  }, [chartModel, chartThemeKey]);
+
+  if (shouldRenderFallback) {
+    return (
+      <div
+        className={className}
+        role="list"
+        aria-label="프로젝트 단계 요약"
+      >
+        <div className="grid h-full w-full grid-cols-2 gap-2 sm:grid-cols-3">
+          {chartModel.items.map((item) => (
+            <div
+              key={item.label}
+              role="listitem"
+              className="surface-panel-muted flex min-h-20 flex-col justify-between rounded-lg border border-border px-3 py-2"
+            >
+              <span className="text-xs font-medium text-muted-foreground">
+                {item.label}
+              </span>
+              <span
+                className="text-lg font-medium tabular-nums text-foreground"
+                style={{ color: item.color }}
+              >
+                {item.count}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={className}>
-      <Chart key={chartThemeKey} type="bar" data={chartData} options={chartOptions} />
+      <canvas ref={canvasRef} aria-label="프로젝트 단계 차트" />
     </div>
   );
 }

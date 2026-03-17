@@ -7,8 +7,7 @@
 import { useDeferredValue, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
-import List from "lucide-react/dist/esm/icons/list";
+import { LayoutGrid, List } from "lucide-react";
 
 import { Badge } from "@/shared/ui/primitives/badge";
 import { Button } from "@/shared/ui/primitives/button";
@@ -37,6 +36,7 @@ import {
   usePaginatedAssetsQuery,
 } from "@/entities/asset/model/queries";
 import type { AssetKind, AssetSort, AssetSummary, AssetViewMode } from "@/entities/asset/model/types";
+import { useProjectsQuery } from "@/entities/project/model/queries";
 import {
   assetSortOptions,
   getAssetKindLabel,
@@ -66,6 +66,7 @@ export function AssetListPage({
   const projectId = Number.isFinite(rawProjectId) && rawProjectId > 0 ? rawProjectId : undefined;
   const deferredQuery = useDeferredValue(query);
   const categoriesQuery = useAssetCategoriesQuery(kind);
+  const allProjectsQuery = useProjectsQuery();
   const forcedCategory = useMemo(
     () => (categoriesQuery.data ?? []).find((item) => item.slug === categorySlug),
     [categoriesQuery.data, categorySlug],
@@ -125,7 +126,16 @@ export function AssetListPage({
     });
   }, [page, pagination, searchParams]);
 
-  const selectedProjectLabel = projectId ? `프로젝트 #${projectId}` : null;
+  const selectedProject = useMemo(() => {
+    if (!projectId) {
+      return null;
+    }
+
+    const matchedProject = (allProjectsQuery.data ?? []).find((project) => project.id === projectId);
+    return matchedProject
+      ? { id: matchedProject.id, name: matchedProject.name }
+      : { id: projectId, name: `프로젝트 #${projectId}` };
+  }, [allProjectsQuery.data, projectId]);
   const assetSearchInputClassName = cn(
     "h-9 rounded-md border-border bg-background px-3",
     kind === "code" ? "lg:flex-1" : "lg:min-w-0 lg:flex-[5.5]",
@@ -178,26 +188,24 @@ export function AssetListPage({
           </Select>
 
           {kind !== "code" ? (
-            <div className="lg:min-w-0 lg:flex-[4.5]">
-              <ProjectSelector
-                kind={kind}
-                selectedProjectId={projectId}
-                selectedLabel={selectedProjectLabel}
-                optionMeta={(project) => `${project.assetCounts[kind] ?? 0}건`}
-                onProjectSelect={(project) => {
-                  updateParams((next) => {
-                    next.set("projectId", String(project.id));
-                    next.delete("page");
-                  });
-                }}
-                onProjectClear={() => {
-                  updateParams((next) => {
-                    next.delete("projectId");
-                    next.delete("page");
-                  });
-                }}
-              />
-            </div>
+            <ProjectSelector
+              kind={kind}
+              className="lg:min-w-0 lg:flex-[4.5]"
+              selectedProject={selectedProject}
+              optionMeta={(project) => `${project.assetCounts[kind] ?? 0}건`}
+              onProjectSelect={(project) => {
+                updateParams((next) => {
+                  next.set("projectId", String(project.id));
+                  next.delete("page");
+                });
+              }}
+              onProjectClear={() => {
+                updateParams((next) => {
+                  next.delete("projectId");
+                  next.delete("page");
+                });
+              }}
+            />
           ) : null}
           <Input
             value={query}

@@ -7,8 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
-import Triangle from "lucide-react/dist/esm/icons/triangle";
+import { ChevronDown, Triangle } from "lucide-react";
 
 import {
   Card,

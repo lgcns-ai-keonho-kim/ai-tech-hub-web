@@ -39,7 +39,7 @@ const stageToneVarMap: Record<StagePillTone, string> = {
 };
 
 export function isStagePillTone(value: string | null | undefined): value is StagePillTone {
-  return Boolean(value) && value in stageToneVarMap;
+  return value != null && value in stageToneVarMap;
 }
 
 export function getStageBadgeStyle(stage: StagePillTone): CSSProperties {

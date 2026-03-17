@@ -4,13 +4,14 @@
  * 적용 패턴: 페이지 렌더링 테스트 패턴
  * 참조: ui/src/pages/projects-page.tsx, ui/src/shared/api/hooks.ts
  */
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as projectQueries from "@/entities/project/model/queries";
 import { ProjectsPage } from "@/pages/projects/list/ui/page";
+import { asQueryResult } from "@/test/react-query-mocks";
+import { renderWithAppProviders } from "@/test/render-app";
 
 vi.mock("@/entities/project/model/queries", () => ({
   useProjectsQuery: vi.fn(),
@@ -41,35 +42,32 @@ function createProjects(count: number) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockedUseProjectsQuery.mockReturnValue({
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => null);
+  mockedUseProjectsQuery.mockReturnValue(asQueryResult<ReturnType<typeof projectQueries.useProjectsQuery>>({
     data: createProjects(7),
     isLoading: false,
-  } as ReturnType<typeof projectQueries.useProjectsQuery>);
+  }));
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("ProjectsPage", () => {
   it("검색 입력에 고객사와 PM 검색 의도를 드러낸다", () => {
-    render(
-      <MemoryRouter>
-        <ProjectsPage />
-      </MemoryRouter>,
-    );
+    renderWithAppProviders(<ProjectsPage />);
 
     expect(screen.getByPlaceholderText("프로젝트명, 고객사, PM 검색")).toBeInTheDocument();
   });
 
   it("입력 중에는 결과를 유지하고 검색 제출 후에만 결과를 바꾼다", async () => {
     const user = userEvent.setup();
-    mockedUseProjectsQuery.mockImplementation((query?: string) => ({
+    mockedUseProjectsQuery.mockImplementation((query?: string) => asQueryResult<ReturnType<typeof projectQueries.useProjectsQuery>>({
       data: query?.trim() === "7" ? [createProjects(7)[6]] : createProjects(7),
       isLoading: false,
-    } as ReturnType<typeof projectQueries.useProjectsQuery>));
+    }));
 
-    render(
-      <MemoryRouter>
-        <ProjectsPage />
-      </MemoryRouter>,
-    );
+    renderWithAppProviders(<ProjectsPage />);
 
     const input = screen.getByPlaceholderText("프로젝트명, 고객사, PM 검색");
     await user.type(input, "7");
@@ -86,16 +84,12 @@ describe("ProjectsPage", () => {
   it("첫 페이지에는 6개 프로젝트만 보여주고 다음 페이지로 이동할 수 있다", async () => {
     const user = userEvent.setup();
 
-    render(
-      <MemoryRouter>
-        <ProjectsPage />
-      </MemoryRouter>,
-    );
+    renderWithAppProviders(<ProjectsPage />);
 
     expect(screen.getByText(/검색 결과 7건 .*1-6건 표시/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /고객 상담 Copilot 구축 1/i })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /고객 상담 Copilot 구축 7/i })).not.toBeInTheDocument();
-    expect(screen.getByText("단계별 파일 수")).toBeInTheDocument();
+    expect(await screen.findByRole("list", { name: "프로젝트 단계 요약" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "다음" }));
 
@@ -106,16 +100,12 @@ describe("ProjectsPage", () => {
   });
 
   it("검색 결과가 없으면 빈 상태 안내를 보여준다", () => {
-    mockedUseProjectsQuery.mockReturnValue({
+    mockedUseProjectsQuery.mockReturnValue(asQueryResult<ReturnType<typeof projectQueries.useProjectsQuery>>({
       data: [],
       isLoading: false,
-    } as ReturnType<typeof projectQueries.useProjectsQuery>);
+    }));
 
-    render(
-      <MemoryRouter>
-        <ProjectsPage />
-      </MemoryRouter>,
-    );
+    renderWithAppProviders(<ProjectsPage />);
 
     expect(screen.getByText("조건에 맞는 프로젝트가 없습니다.")).toBeInTheDocument();
     expect(screen.getByText("표시할 프로젝트가 아직 없습니다.")).toBeInTheDocument();

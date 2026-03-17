@@ -24,7 +24,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   return withErrorBoundary(async () => {
-    const session = await requireSessionUser(request);
+    const currentUser = await requireSessionUser(request);
     const params = await context.params;
     const postId = Number(params.id);
     const post = await getBoardPostById(postId);
@@ -46,7 +46,7 @@ export async function POST(
     }
 
     const body = await parseJsonBody(request, createCommentBodySchema);
-    const comment = await createBoardComment(postId, session.id, body.content);
+    const comment = await createBoardComment(postId, currentUser.id, body.content);
     return { comment };
   });
 }

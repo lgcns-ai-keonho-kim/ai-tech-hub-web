@@ -15,6 +15,7 @@ import * as notificationQueries from "@/entities/notification/model/queries";
 import * as projectQueries from "@/entities/project/model/queries";
 import type { UserSession } from "@/entities/session/model/types";
 import * as authStore from "@/entities/session/model/store";
+import { asQueryResult } from "@/test/react-query-mocks";
 import { AppShellSidebar } from "@/widgets/app-shell/ui/app-shell-sidebar";
 
 vi.mock("@/entities/notification/model/queries", () => ({
@@ -103,18 +104,18 @@ beforeEach(() => {
   vi.clearAllMocks();
   clearSessionMock.mockReset();
 
-  mockedUseNotificationsQuery.mockReturnValue({
+  mockedUseNotificationsQuery.mockReturnValue(asQueryResult<ReturnType<typeof notificationQueries.useNotificationsQuery>>({
     data: [],
     isLoading: false,
     isError: false,
     status: "success",
-  } as ReturnType<typeof notificationQueries.useNotificationsQuery>);
-  mockedUseProjectApprovalsQuery.mockReturnValue({
+  }));
+  mockedUseProjectApprovalsQuery.mockReturnValue(asQueryResult<ReturnType<typeof projectQueries.useProjectApprovalsQuery>>({
     data: [],
     isLoading: false,
     isError: false,
     status: "success",
-  } as ReturnType<typeof projectQueries.useProjectApprovalsQuery>);
+  }));
   mockedUseAuthStore.mockImplementation(((
     selector: (state: MockAuthStoreState) => unknown,
   ) =>
@@ -127,18 +128,18 @@ beforeEach(() => {
 
 describe("AppShellSidebar", () => {
   it("attention 데이터가 아직 준비되지 않았으면 숫자 badge를 렌더링하지 않는다", () => {
-    mockedUseNotificationsQuery.mockReturnValue({
+    mockedUseNotificationsQuery.mockReturnValue(asQueryResult<ReturnType<typeof notificationQueries.useNotificationsQuery>>({
       data: undefined,
       isLoading: true,
       isError: false,
       status: "pending",
-    } as ReturnType<typeof notificationQueries.useNotificationsQuery>);
-    mockedUseProjectApprovalsQuery.mockReturnValue({
+    }));
+    mockedUseProjectApprovalsQuery.mockReturnValue(asQueryResult<ReturnType<typeof projectQueries.useProjectApprovalsQuery>>({
       data: undefined,
       isLoading: true,
       isError: false,
       status: "pending",
-    } as ReturnType<typeof projectQueries.useProjectApprovalsQuery>);
+    }));
 
     const { container } = renderAppShellHeader();
 
@@ -146,7 +147,7 @@ describe("AppShellSidebar", () => {
   });
 
   it("읽지 않은 알림과 승인 대기를 합산한 숫자 badge를 빨간 원형으로 보여준다", () => {
-    mockedUseNotificationsQuery.mockReturnValue({
+    mockedUseNotificationsQuery.mockReturnValue(asQueryResult<ReturnType<typeof notificationQueries.useNotificationsQuery>>({
       data: [
         {
           id: 1,
@@ -170,8 +171,8 @@ describe("AppShellSidebar", () => {
       isLoading: false,
       isError: false,
       status: "success",
-    } as ReturnType<typeof notificationQueries.useNotificationsQuery>);
-    mockedUseProjectApprovalsQuery.mockReturnValue({
+    }));
+    mockedUseProjectApprovalsQuery.mockReturnValue(asQueryResult<ReturnType<typeof projectQueries.useProjectApprovalsQuery>>({
       data: [
         {
           id: 7,
@@ -186,7 +187,7 @@ describe("AppShellSidebar", () => {
       isLoading: false,
       isError: false,
       status: "success",
-    } as ReturnType<typeof projectQueries.useProjectApprovalsQuery>);
+    }));
 
     const { container } = renderAppShellHeader();
     const badge = container.querySelector('[data-slot="badge"][data-variant="attention"]');

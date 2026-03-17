@@ -28,8 +28,12 @@ export async function GET(request: Request) {
     );
 
     if (query.page && query.pageSize) {
+      const { page, pageSize, ...filters } = query;
+
       return listAssetsPaginated({
-        ...query,
+        ...filters,
+        page,
+        pageSize,
         currentUserId: getOptionalSessionUserId(request),
       });
     }
@@ -45,7 +49,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   return withErrorBoundary(async () => {
-    const session = await requireSessionUser(request);
+    const currentUser = await requireSessionUser(request);
     const body = await parseJsonBody(request, createAssetBodySchema);
 
     if (!(await hasAssetCategory(body.categoryId))) {
@@ -73,7 +77,7 @@ export async function POST(request: Request) {
         });
       }
 
-      if (!(await isProjectMember(body.projectId, session.id))) {
+      if (!(await isProjectMember(body.projectId, currentUser.id))) {
         throw new ApiError({
           status: 403,
           code: "project_membership_required",
@@ -82,7 +86,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const asset = await createAsset(session.id, body);
+    const asset = await createAsset(currentUser.id, body);
 
     return { asset };
   });

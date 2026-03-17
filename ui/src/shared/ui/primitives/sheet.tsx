@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Dialog as SheetPrimitive } from "radix-ui"
-import X from "lucide-react/dist/esm/icons/x"
+import { X } from "lucide-react"
 
 import { cn } from "@/shared/lib/cn"
 import { Button } from "@/shared/ui/primitives/button"

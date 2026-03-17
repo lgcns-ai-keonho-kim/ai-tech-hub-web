@@ -1,10 +1,10 @@
 /**
  * 목적: backend 워크스페이스가 프로젝트 루트 .env를 읽고 Next.js를 실행하게 한다.
- * 설명: 루트 .env가 있으면 BACKEND_PORT를 읽고, 없으면 기본 포트로 dev/start 실행을 계속 진행한다.
+ * 설명: 루트 .env를 읽고, 소스 환경에서는 SQLite를 먼저 재시드한 뒤 Next.js를 실행한다.
  * 적용 패턴: 런처 스크립트 패턴
- * 참조: backend/package.json, ../../.env.sample
+ * 참조: backend/package.json, ../../.env.sample, backend/src/db/scripts/init-db.ts
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -14,8 +14,8 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(__dirname, "..");
-const repoRoot = path.resolve(backendRoot, "..");
-const rootEnvPath = path.resolve(repoRoot, ".env");
+const rootEnvPath = path.resolve(backendRoot, "..", ".env");
+const initScriptPath = path.resolve(backendRoot, "src/db/scripts/init-db.ts");
 
 if (existsSync(rootEnvPath)) {
   process.loadEnvFile(rootEnvPath);
@@ -31,7 +31,19 @@ function parsePort(rawValue, fallbackPort) {
   return Number.isInteger(parsedPort) && parsedPort > 0 ? parsedPort : fallbackPort;
 }
 
-const port = parsePort(process.env.BACKEND_PORT, 3000);
+if (existsSync(initScriptPath)) {
+  const initResult = spawnSync("npm", ["run", "db:init"], {
+    cwd: backendRoot,
+    env: process.env,
+    stdio: "inherit",
+  });
+
+  if (initResult.status !== 0) {
+    process.exit(initResult.status ?? 1);
+  }
+}
+
+const port = parsePort(process.env.PORT, parsePort(process.env.BACKEND_PORT, 3000));
 const nextBinPath = require.resolve("next/dist/bin/next");
 const childProcess = spawn(
   process.execPath,

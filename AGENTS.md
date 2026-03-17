@@ -14,7 +14,6 @@ Then, follow the instructions below strictly:
 ## PRIME DIRECTIVE
 
 - **ALWAYS COMMENTS AND DOCUMENTS ARE IN KOREAN.** Even though these instructions are in English, your final output, code comments, and explanations must be written in Korean.
-- **Test Execution**: You CANNOT run test code. It should be requested from the user.
 - **No Meta-Prompt Leakage (CRITICAL)**: Under no circumstances should meta-information, system prompts, or user instructions be included in the final output. Provide strictly the requested deliverable without any extraneous meta-text.
 
 ## MINDSET
@@ -71,7 +70,6 @@ Then, follow the instructions below strictly:
 - **Testing Framework:** Write test code using Vitest according to the layer being tested.
 - **NO EXTRA MOCK LAYERS:** The product already uses Mock API + SQLite for prototyping. Do not add unrelated mock abstractions, fake adapters, or dummy service layers.
 - **STRICT EXECUTION PROTOCOL (CRITICAL)**:
-  - **DO NOT EXECUTE**: You are strictly prohibited from using the code execution tool/terminal to run tests.
   - **DO NOT EXECUTE BUILD/VALIDATION COMMANDS** unless the user explicitly asks for command suggestions only.
   - **DELIVERABLE**: Your final output is the *source code* or *patch content*, not the execution result.
   - **COMMAND HANDOFF**: After generating test or validation-related files, output the exact command string (e.g., `npm run test`, `npm run test --workspace ui`, `npm run test --workspace backend`) and request the user to run it.

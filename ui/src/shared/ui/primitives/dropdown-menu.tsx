@@ -6,8 +6,7 @@
  */
 import * as React from "react"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
-import Check from "lucide-react/dist/esm/icons/check"
-import ChevronRight from "lucide-react/dist/esm/icons/chevron-right"
+import { Check, ChevronRight } from "lucide-react"
 
 import { cn } from "@/shared/lib/cn"
 

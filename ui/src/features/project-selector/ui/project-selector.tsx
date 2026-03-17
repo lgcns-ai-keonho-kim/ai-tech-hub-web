@@ -6,6 +6,7 @@
  */
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 
+import { cn } from "@/shared/lib/cn";
 import { Badge } from "@/shared/ui/primitives/badge";
 import { Button } from "@/shared/ui/primitives/button";
 import { Input } from "@/shared/ui/primitives/input";
@@ -15,22 +16,22 @@ import type { AssetKind } from "@/entities/asset/model/types";
 
 type ProjectSelectorProps = {
   kind: AssetKind;
-  selectedProjectId?: number | null;
-  selectedLabel?: string | null;
+  selectedProject?: Pick<ProjectSummary, "id" | "name"> | null;
   onProjectSelect: (project: ProjectSummary) => void;
   onProjectClear: () => void;
   placeholder?: string;
   optionMeta?: (project: ProjectSummary) => string;
+  className?: string;
 };
 
 export function ProjectSelector({
   kind,
-  selectedProjectId,
-  selectedLabel,
+  selectedProject,
   onProjectSelect,
   onProjectClear,
   placeholder = "프로젝트 검색",
   optionMeta,
+  className,
 }: ProjectSelectorProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -38,7 +39,7 @@ export function ProjectSelector({
   const deferredQuery = useDeferredValue(query.trim());
   const projectsQuery = useProjectsQuery(kind === "code" ? undefined : deferredQuery || undefined);
   const projectOptions = (projectsQuery.data ?? []).slice(0, 6);
-  const shouldShowResults = !selectedProjectId && open && query.trim().length > 0;
+  const shouldShowResults = !selectedProject && open && query.trim().length > 0;
 
   useEffect(() => {
     if (!open) {
@@ -62,14 +63,22 @@ export function ProjectSelector({
   }
 
   return (
-    <div ref={fieldRef} className="relative">
-      {selectedProjectId ? (
-        <div className="flex h-9 min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-background px-3">
+    <div
+      ref={fieldRef}
+      className={cn("relative", className)}
+      data-testid="project-selector-root"
+    >
+      {selectedProject ? (
+        <div
+          className="flex h-9 min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-background px-3"
+          role="status"
+          aria-label={`선택된 프로젝트 ${selectedProject.name}`}
+        >
           <Badge
             variant="outline"
             className="min-w-0 flex-1 truncate rounded-md border-border bg-background px-3 py-1.5 text-foreground/90"
           >
-            {selectedLabel ?? `프로젝트 #${selectedProjectId}`}
+            {selectedProject.name}
           </Badge>
           <Button
             type="button"
@@ -106,6 +115,7 @@ export function ProjectSelector({
             aria-autocomplete="list"
             aria-expanded={shouldShowResults}
             aria-controls="project-selector-options"
+            aria-label={placeholder}
             className="h-9 rounded-md border-border bg-background px-3"
           />
           {shouldShowResults ? (

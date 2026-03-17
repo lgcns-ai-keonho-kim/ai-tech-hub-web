@@ -6,7 +6,7 @@
  */
 import type { UserSession } from "@/entities/session/model/types";
 
-export function toSessionRequestHeaders(session: UserSession | null) {
+export function toSessionRequestHeaders(session: UserSession | null): Record<string, string> {
   if (!session) {
     return {};
   }

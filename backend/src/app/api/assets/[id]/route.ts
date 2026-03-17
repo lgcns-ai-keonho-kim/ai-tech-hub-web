@@ -12,7 +12,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   return withErrorBoundary(async () => {
-    const session = await requireSessionUser(request);
+    const currentUser = await requireSessionUser(request);
     const params = await context.params;
     const assetId = Number(params.id);
 
@@ -24,7 +24,7 @@ export async function GET(
       });
     }
 
-    const asset = await getAssetById(assetId, session.id);
+    const asset = await getAssetById(assetId, currentUser.id);
 
     if (!asset) {
       throw new ApiError({
@@ -36,9 +36,9 @@ export async function GET(
 
     if (
       asset.status !== "approved" &&
-      asset.ownerUserId !== session.id &&
-      session.user.globalRole !== "admin" &&
-      (!asset.projectId || !session.managedProjectIds.includes(asset.projectId))
+      asset.ownerUserId !== currentUser.id &&
+      currentUser.globalRole !== "admin" &&
+      (!asset.projectId || !currentUser.managedProjectIds.includes(asset.projectId))
     ) {
       throw new ApiError({
         status: 403,

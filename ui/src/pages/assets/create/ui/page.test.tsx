@@ -4,7 +4,7 @@
  * 적용 패턴: 페이지 렌더링 테스트 패턴
  * 참조: ui/src/pages/asset-form-page.tsx, ui/src/shared/api/hooks.ts
  */
-import { render, screen } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,6 +13,8 @@ import type { AssetKind } from "@/entities/asset/model/types";
 import * as createAssetMutations from "@/features/asset-actions/model/mutations";
 import * as projectQueries from "@/entities/project/model/queries";
 import { AssetFormPage } from "@/pages/assets/create/ui/page";
+import { asMutationResult, asQueryResult } from "@/test/react-query-mocks";
+import { renderWithAppProviders } from "@/test/render-app";
 
 const mockedNavigate = vi.fn();
 let mockedKind: AssetKind = "knowledge";
@@ -47,7 +49,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockedKind = "knowledge";
 
-  mockedUseAssetCategoriesQuery.mockReturnValue({
+  mockedUseAssetCategoriesQuery.mockReturnValue(asQueryResult<ReturnType<typeof assetQueries.useAssetCategoriesQuery>>({
     data: [
       {
         id: 1,
@@ -58,8 +60,8 @@ beforeEach(() => {
       },
     ],
     isLoading: false,
-  } as ReturnType<typeof assetQueries.useAssetCategoriesQuery>);
-  mockedUseProjectsQuery.mockReturnValue({
+  }));
+  mockedUseProjectsQuery.mockReturnValue(asQueryResult<ReturnType<typeof projectQueries.useProjectsQuery>>({
     data: [
       {
         id: 1,
@@ -82,16 +84,16 @@ beforeEach(() => {
     ],
     isLoading: false,
     isFetching: false,
-  } as ReturnType<typeof projectQueries.useProjectsQuery>);
-  mockedUseCreateAssetMutation.mockReturnValue({
+  }));
+  mockedUseCreateAssetMutation.mockReturnValue(asMutationResult<ReturnType<typeof createAssetMutations.useCreateAssetMutation>>({
     mutateAsync: vi.fn(),
     isPending: false,
-  } as ReturnType<typeof createAssetMutations.useCreateAssetMutation>);
+  }));
 });
 
 describe("AssetFormPage", () => {
   it("slug 입력 UI는 숨기고 첨부파일 선택 UI를 노출한다", () => {
-    render(<AssetFormPage />);
+    renderWithAppProviders(<AssetFormPage />);
 
     expect(screen.queryByLabelText("slug")).not.toBeInTheDocument();
     expect(screen.getByLabelText("첨부파일")).toBeInTheDocument();
@@ -99,7 +101,7 @@ describe("AssetFormPage", () => {
   });
 
   it("비코드 자산에서는 프로젝트 검색 입력을 하나만 렌더링한다", () => {
-    render(<AssetFormPage />);
+    renderWithAppProviders(<AssetFormPage />);
 
     expect(screen.getAllByPlaceholderText("프로젝트 검색")).toHaveLength(1);
   });
@@ -107,12 +109,19 @@ describe("AssetFormPage", () => {
   it("프로젝트 후보를 선택하면 선택 상태와 지우기 버튼으로 전환된다", async () => {
     const user = userEvent.setup();
 
-    render(<AssetFormPage />);
+    renderWithAppProviders(<AssetFormPage />);
 
     await user.type(screen.getByPlaceholderText("프로젝트 검색"), "에이전트");
     await user.click(screen.getByRole("option", { name: /에이전트 허브/i }));
 
-    expect(screen.getByText("에이전트 허브")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("status", { name: "선택된 프로젝트 에이전트 허브" }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      within(screen.getByRole("status", { name: "선택된 프로젝트 에이전트 허브" })).getByText("에이전트 허브"),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "지우기" })).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("프로젝트 검색")).not.toBeInTheDocument();
   });
@@ -121,7 +130,7 @@ describe("AssetFormPage", () => {
     const user = userEvent.setup();
     const file = new File(["mock content"], "requirements.pdf", { type: "application/pdf" });
 
-    render(<AssetFormPage />);
+    renderWithAppProviders(<AssetFormPage />);
 
     await user.upload(screen.getByLabelText("첨부파일"), file);
 
@@ -132,7 +141,7 @@ describe("AssetFormPage", () => {
 
   it("코드 자산에서는 프로젝트 검색 UI를 렌더링하지 않는다", () => {
     mockedKind = "code";
-    mockedUseAssetCategoriesQuery.mockReturnValue({
+    mockedUseAssetCategoriesQuery.mockReturnValue(asQueryResult<ReturnType<typeof assetQueries.useAssetCategoriesQuery>>({
       data: [
         {
           id: 1,
@@ -143,9 +152,9 @@ describe("AssetFormPage", () => {
         },
       ],
       isLoading: false,
-    } as ReturnType<typeof assetQueries.useAssetCategoriesQuery>);
+    }));
 
-    render(<AssetFormPage />);
+    renderWithAppProviders(<AssetFormPage />);
 
     expect(screen.queryByPlaceholderText("프로젝트 검색")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "지우기" })).not.toBeInTheDocument();
